@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Connections Solver</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; max-width: 900px; }
+    textarea { width: 100%; height: 200px; }
+    button { padding: 10px 16px; margin-top: 10px; }
+    pre { background: #f4f4f4; padding: 12px; overflow-x: auto; }
+    .row { display: flex; gap: 12px; }
+    .row > div { flex: 1; }
+  </style>
+</head>
+<body>
+  <h1>Connections Solver</h1>
+  <p>Paste 16 entries, one per line (phrases like <b>ICE CREAM</b> allowed):</p>
+  <textarea id="input"></textarea>
+
+  <div class="row">
+    <div>
+      <label>How many solutions do you want to generate? <input id="top_n" type="number" value="5"></label><br/>
+      <label>How many groups (k) do you want to keep <input id="k" type="number" value="400"></label><br/>
+      <label>What's the cap per word while finding solutions <input id="cap" type="number" value="80"></label><br/>
+      <label>What's the minimum group score? <input id="min_score" type="number" step="0.01" value="-0.25"></label><br/>
+      <label>Do you want solution explanations? <input id="explain" type="checkbox"></label><br/>
+      <label>Do you want more detailed statistics? <input id="include_details" type="checkbox"></label><br/>
+      <label>Do you want to see all generated solutions? <input id="include_more_solutions" type="checkbox"></label>
+
+  </div>
+  </div>
+
+  <button onclick="solve()">Solve</button>
+
+  <h2>Result</h2>
+  <div id="result"></div>
+
+  <h3 style="margin-top:16px;">Details</h3>
+  <pre id="details" style="display:none;"></pre>
+
+  <script>
+  function esc(s) {
+    return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+  }
+
+  function renderBest(data) {
+    const best = data.best_solution;
+    const gap = data.confidence_gap;
+    const label = data.confidence_label;
+
+    let html = "";
+    html += `<div style="padding:12px;border:1px solid #ddd;border-radius:8px;">`;
+    html += `<div style="font-size:18px;font-weight:700;">Best solution</div>`;
+    html += `<div style="margin-top:6px;">Total score: <b>${best.total.toFixed ? best.total.toFixed(4) : best.total}</b></div>`;
+
+    if (gap === null || gap === undefined) {
+      html += `<div>Confidence gap: <b>n/a</b> (${esc(label)})</div>`;
+    } else {
+      html += `<div>Confidence gap: <b>${gap.toFixed ? gap.toFixed(4) : gap}</b> (${esc(label)})</div>`;
+    }
+
+    html += `<ol style="margin-top:10px;">`;
+    for (const g of best.groups) {
+      const groupWords = g.group.join(", ");
+      const score = g.score;
+      html += `<li style="margin-bottom:10px;">`;
+      html += `<div><b>${esc(groupWords)}</b></div>`;
+      html += `<div>Group score: ${score.toFixed ? score.toFixed(4) : score}</div>`;
+
+      // explain only if present (only best solution groups)
+      if (g.explain) {
+        const ex = g.explain;
+        html += `<div style="margin-top:6px;padding:8px;background:#fff;color:#111;border:1px solid #ddd;border-radius:6px;">`;
+        html += `<div style="font-weight:700;margin-bottom:4px;">Why this group</div>`;
+        html += `<div>avg pair sim: ${esc(ex.avg_pair_similarity)}</div>`;
+        html += `<div>min pair sim: ${esc(ex.min_pair_similarity)}</div>`;
+        html += `<div>heuristic total: ${esc(ex.heuristic_total)}</div>`;
+        html += `<div>final score: ${esc(ex.final_score)}</div>`;
+        if (ex.heuristics) {
+          html += `<div style="margin-top:6px;"><i>heuristics:</i> ${esc(JSON.stringify(ex.heuristics))}</div>`;
+        }
+        html += `</div>`;
+      }
+
+      html += `</li>`;
+    }
+    html += `</ol>`;
+    html += `</div>`;
+
+    return html;
+  }
+
+  function renderOtherSolutions(data) {
+    if (!data.other_solutions || data.other_solutions.length === 0) return "";
+    let html = `<div style="margin-top:14px;padding:12px;border:1px solid #ddd;border-radius:8px;">`;
+    html += `<div style="font-size:16px;font-weight:700;">Other solutions</div>`;
+    data.other_solutions.forEach((sol, idx) => {
+      html += `<div style="margin-top:10px;padding:10px;background:#fff;color:#111;border:1px solid #ddd;border-radius:6px;">`;
+      html += `<div><b>#${idx+2}</b> total: ${sol.total.toFixed ? sol.total.toFixed(4) : sol.total}</div>`;
+      html += `<ul>`;
+      for (const g of sol.groups) {
+        html += `<li>${esc(g.group.join(", "))} — ${g.score.toFixed ? g.score.toFixed(4) : g.score}</li>`;
+      }
+      html += `</ul>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+    return html;
+  }
+
+  async function solve() {
+    const resultDiv = document.getElementById("result");
+    const detailsPre = document.getElementById("details");
+
+    resultDiv.innerHTML = "Solving...";
+    detailsPre.style.display = "none";
+    detailsPre.textContent = "";
+
+    const text = document.getElementById("input").value.trim();
+
+    // Accept newline or commas, preserve phrases like "ICE CREAM".
+    // Split on commas or newlines, but not spaces.
+    const words = text
+      .split(/[\n,]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    const payload = {
+      words,
+      top_n: parseInt(document.getElementById("top_n").value, 10),
+      k: parseInt(document.getElementById("k").value, 10),
+      cap: parseInt(document.getElementById("cap").value, 10),
+      min_score: parseFloat(document.getElementById("min_score").value),
+      explain: document.getElementById("explain").checked,
+      include_details: document.getElementById("include_details").checked,
+      include_more_solutions: document.getElementById("include_more_solutions").checked
+    };
+
+    const res = await fetch("/solve", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      resultDiv.innerHTML = `<div style="padding:12px;border:1px solid #a33;border-radius:8px;background:#2a0000;">
+        <b>Error:</b> ${esc(data.error || "Unknown error")}
+      </div>`;
+      return;
+    }
+
+    let html = renderBest(data);
+    html += renderOtherSolutions(data);
+    resultDiv.innerHTML = html;
+
+    // If include_details checked, show raw JSON under Details
+    if (payload.include_details) {
+      detailsPre.style.display = "block";
+      detailsPre.textContent = JSON.stringify(data, null, 2);
+    }
+  }
+</script>
+
+</body>
+</html>
