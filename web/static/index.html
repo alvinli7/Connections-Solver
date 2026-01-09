@@ -10,6 +10,10 @@
     pre { background: #f4f4f4; padding: 12px; overflow-x: auto; }
     .row { display: flex; gap: 12px; }
     .row > div { flex: 1; }
+    body { background: #fff; color: #111; font-family: system-ui, Arial, sans-serif; }
+    .card { background:#fff; color:#111; border:1px solid #ddd; border-radius:10px; padding:12px; }
+    .error { background:#fff; color:#b00020; border:1px solid #f2b8b5; border-radius:10px; padding:12px; }
+    pre { background:#fff; color:#111; border:1px solid #ddd; border-radius:10px; padding:10px; overflow:auto; }
   </style>
 </head>
 <body>
@@ -112,7 +116,7 @@
     const resultDiv = document.getElementById("result");
     const detailsPre = document.getElementById("details");
 
-    resultDiv.innerHTML = "Solving...";
+    resultDiv.innerHTML = `<div class="card">Solving…</div>`;
     detailsPre.style.display = "none";
     detailsPre.textContent = "";
 

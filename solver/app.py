@@ -3,8 +3,9 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 from .groups import generate_groups
 from .io_utils import parse_words, validate_words 
-from .scorer import SemanticScorer
+from .scorer import SemanticScorer, normalize_entry
 from .search import solve_best_4
+import math
 
 Group = Tuple[str, str, str, str]
 ScoredGroup = Tuple[Group, float]
@@ -17,6 +18,17 @@ class SolveParams:
     min_score: float = -0.25     
     explain: bool = False
     debug: bool = False
+
+def zscore_normalize(scored: List[ScoredGroup]) -> Tuple[List[ScoredGroup], float, float]:
+    scores = [s for _, s in scored]
+    mean = sum(scores) / len(scores)
+    var = sum((s - mean) ** 2 for s in scores) / len(scores)
+    std = math.sqrt(var)
+
+    if std < 1e-9:
+        return [(g, 0.0) for g, _ in scored], mean, std
+
+    return [(g, (s - mean) / std) for g, s in scored], mean, std
 
 def prune_topk(scored: List[ScoredGroup], k: int) -> List[ScoredGroup]:
     return sorted(scored, key=lambda x: x[1], reverse=True)[:k]
@@ -37,9 +49,10 @@ def prune_word_cap(scored: List[ScoredGroup], cap_per_word: int) -> Tuple[List[S
                 counts[w] = counts.get(w, 0) + 1
     return kept, counts
 
-
 def solve_connections(words: List[str], params: SolveParams, scorer: SemanticScorer) -> Dict[str, Any]:
     # Core solver entrypoint for BOTH CLI and Web
+
+    words = [normalize_entry(w) for w in words]
 
     ok, msg = validate_words(words)
     if not ok:
@@ -48,11 +61,14 @@ def solve_connections(words: List[str], params: SolveParams, scorer: SemanticSco
     groups = generate_groups(words)
     scorer.embed_words(words)
 
-    # Score all groups
+    # Score all groups (raw)
     scored = scorer.score_all_groups(groups)
 
-    # Prune
-    topk = prune_topk(scored, params.k)
+    # Z-score normalize across the board (MATCH CLI)
+    scored_norm, mu, sigma = zscore_normalize(scored)
+
+    # Prune using normalized scores
+    topk = prune_topk(scored_norm, params.k)
     capped, counts = prune_word_cap(topk, params.cap)
 
     # Search

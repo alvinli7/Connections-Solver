@@ -85,7 +85,6 @@ def main():
     parser.add_argument("--json", action="store_true", help="Print JSON output (optional).")
     parser.add_argument("--more", action="store_true", help="Include additional solutions (2..N) in output.")
     parser.add_argument("--details", action="store_true", help="Include extra debug info (words/params/stats).")
-    
     args = parser.parse_args()
     text = read_input_text(args)
     words = parse_words(text)
@@ -231,6 +230,6 @@ def main():
         print(f"Total 4-word groups: {len(groups)}")
         print(f"Prune Strategy A (Top-K): kept {len(topk)} groups")
         print(f"Prune Strategy C (Top-K + word cap): kept {len(capped)} groups")
-
+        
 if __name__ == "__main__":
     main()

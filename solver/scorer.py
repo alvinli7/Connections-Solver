@@ -133,6 +133,8 @@ class SemanticScorer:
                     bonus += 0.22
                     break
 
+        
+
         gap = self.outlier_gap(group)
         if gap > 0.1:
             bonus -= 0.05
@@ -220,7 +222,6 @@ class SemanticScorer:
 
         semantic = 0.75 * avg_sim + 0.25 * min_sim
         final = semantic + bonus
-
 
         return {
             "avg_pair_similarity": round(avg_sim, 3),

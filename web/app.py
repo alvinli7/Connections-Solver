@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from solver.app import solve_connections, SolveParams
 from solver.service import SCORER
+from solver.scorer import normalize_entry
 
 app = FastAPI(title="Connections Solver API", version="1.0")
 
@@ -61,6 +62,7 @@ def solve(req: SolveRequest) -> Dict[str, Any]:
         explain=req.explain,
     )
 
+    clean_words = [normalize_entry(w) for w in req.words]
     result = solve_connections(req.words, params, SCORER)
 
     # If solver failed, return as is (still clean JSON)
