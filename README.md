@@ -36,7 +36,7 @@ Have you ever struggled with the NYT connections game? If you have, you aren't a
 
 **In the terminal, run:**
 
-git clone https://github.com/<alvinli7>/connections-solver.git
+git clone https://github.com/alvinli7/connections-solver.git
 
 cd connections-solver
 
@@ -54,7 +54,7 @@ source venv/bin/activate
 
 **Then install dependencies:**
 
-install pip -r requirements.txt
+pip install -r requirements.txt
 
 ## 3) Running the CLI
 
@@ -100,7 +100,11 @@ python -m pip install --upgrade pip
 
 # Tech Stack
 Python
+
 FastAPI + Uvicorn (web wrapper)
+
 SentenceTransformers (semantic embeddings)
+
 Backtracking search + pruning strategies
+
 Heuristic scoring (patterns, lexicons, phrase glue)
