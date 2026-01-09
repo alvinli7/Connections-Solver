@@ -37,6 +37,7 @@ Have you ever struggled with the NYT connections game? If you have, you aren't a
 **In the terminal, run:**
 
 git clone https://github.com/<alvinli7>/connections-solver.git
+
 cd connections-solver
 
 ## 2) Create a Virtual Environment
